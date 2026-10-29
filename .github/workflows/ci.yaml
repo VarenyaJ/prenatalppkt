@@ -11,9 +11,13 @@ env:
 
 jobs:
   test:
-    name: Test
-    timeout-minutes: 15
+    name: Test (Python ${{ matrix.python-version }})
+    timeout-minutes: 20
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
 
     - name: Check out Repo
@@ -21,16 +25,15 @@ jobs:
       with:
        fetch-depth: 0
 
-    - name: Setup Env
-      uses: ./.github/actions/setup_env
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
 
-    - name: Install package
-      run: pip install -e .
-    
+    - name: Install the locked environment
+      run: uv sync --frozen --extra dev --python ${{ matrix.python-version }}
+
     - name: Test with pytest
       id: tests
-      run: |
-        pytest --disable-warnings ./
+      run: uv run --frozen pytest --disable-warnings ./
 
   formatting:
     name: Formatting
