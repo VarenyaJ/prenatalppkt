@@ -37,7 +37,7 @@ dependencies = [
  "orjson==3.11.9",
  "pandas==2.3.2",
  "phenopackets==2.0.2.post5",
- "protobuf==3.20.3",
+ "protobuf==6.33.6",
  "python-calamine==0.5.3",
  "PyYAML==6.0.2",
  "requests==2.34.2",
@@ -55,7 +55,7 @@ dev = [
  "pre-commit>=3.7",
 ]
 ocr = [
- "docling==2.53.0", # lxml version that already has prebuilt binary wheels; pulls in torch/CUDA (~3GB)
+ "docling==2.138.0", # pulls in torch/CUDA (~3GB)
 ]
 fast_hpo_cr = [
  "FastHPOCR==0.1.4",
@@ -92,3 +92,11 @@ version_file = "src/prenatalppkt/_version.py"
 [tool.setuptools.dynamic]
 version = { attr = "prenatalppkt._version.version" }
 # dependencies = {file = ["requirements/requirements.txt"]}
+
+[tool.uv]
+# Only resolve releases at least two weeks old; move this date forward on
+# purpose when updating the lockfile.
+exclude-newer = "2026-10-14T00:00:00Z"
+# Security fixes newer than the cutoff, allowed on purpose (2026-10-28):
+# certifi (emSign CA removal), virtualenv / filelock / setuptools (dev-tool advisories).
+exclude-newer-package = { certifi = "2026-10-21T00:00:00Z", virtualenv = "2026-10-21T00:00:00Z", filelock = "2026-10-21T00:00:00Z", setuptools = "2026-10-21T00:00:00Z" }
