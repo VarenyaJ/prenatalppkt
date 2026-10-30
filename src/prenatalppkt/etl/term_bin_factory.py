@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import ClassVar, Dict, List, Optional, Set
 
+from prenatalppkt.data_files import MAPPINGS_DIR
 from prenatalppkt.etl.measurement_registry import REGISTRY
 from prenatalppkt.gestational_age import GestationalAge
 from prenatalppkt.mapping_loader import BiometryMappingLoader
@@ -38,12 +39,7 @@ DELIBERATELY_UNMAPPED_MEASUREMENTS: Set[str] = {
 }
 
 # Default path to YAML mappings file
-DEFAULT_MAPPINGS_PATH = (
-    Path(__file__).parent.parent.parent.parent
-    / "data"
-    / "mappings"
-    / "biometry_hpo_mappings.yaml"
-)
+DEFAULT_MAPPINGS_PATH = MAPPINGS_DIR / "biometry_hpo_mappings.yaml"
 
 # TODO(@VarenyaJ): Observer exports no calculated percentile for OFD, NT,
 # Nuchal Fold, Cerebellum, Cisterna Magna, Nasal Bone, the lateral
