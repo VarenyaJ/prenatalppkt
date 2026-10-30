@@ -159,7 +159,7 @@ names.
 File:
 
 ```text
-data/mappings/biometry_hpo_mappings.yaml
+src/prenatalppkt/data/mappings/biometry_hpo_mappings.yaml
 ```
 
 Shape:

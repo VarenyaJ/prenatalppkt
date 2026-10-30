@@ -115,7 +115,7 @@ Fenominal branch:
 Main files:
 
 ```text
-data/mappings/biometry_hpo_mappings.yaml
+src/prenatalppkt/data/mappings/biometry_hpo_mappings.yaml
 src/prenatalppkt/mapping_loader.py
 src/prenatalppkt/etl/term_bin_factory.py
 src/prenatalppkt/measurements/percentile_range.py

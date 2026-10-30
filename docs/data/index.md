@@ -116,7 +116,7 @@ Plain meaning:
 The main clinical mapping file is:
 
 ```text
-data/mappings/biometry_hpo_mappings.yaml
+src/prenatalppkt/data/mappings/biometry_hpo_mappings.yaml
 ```
 
 It maps:
