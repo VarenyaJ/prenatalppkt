@@ -800,14 +800,14 @@ wheels = [
 
 [[package]]
 name = "fenominal"
-version = "0.2.17"
+version = "0.3.4"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/74/f3/1a58ffa00cf794c433c33b6853db0f1bf18a64a63d5561ed2204f6e462b2/fenominal-0.2.17-cp37-abi3-macosx_10_12_x86_64.whl", hash = "sha256:71a3f6134d4607ddaef477f9c7b743ca53b7706563d11504d877ec7b5ba32197", size = 1187736, upload-time = "2026-07-05T13:35:09.464Z" },
-    { url = "https://files.pythonhosted.org/packages/56/47/8b20500f345dc51c7f208345b2265f0af33b0c220050fb5fd427e3fb1225/fenominal-0.2.17-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:4901a3c80f957e5f87259ffdc1e497887ac811c09dfbcdaa10ecb15ad2dffa17", size = 1145221, upload-time = "2026-07-05T13:35:10.964Z" },
-    { url = "https://files.pythonhosted.org/packages/23/55/9a0f7c33b4901ad0371eebbc46c368acc9d5201ddf462586b3fa34897e7f/fenominal-0.2.17-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:549e26c97021669e4ace940aa331d9d80ab37b4e532bceb36e027a08c7e60df7", size = 1301373, upload-time = "2026-07-05T13:35:12.396Z" },
-    { url = "https://files.pythonhosted.org/packages/26/bb/c846e302c27322fa7c1689663dafa68df440f258faf5ddda6faf4dc454a6/fenominal-0.2.17-cp37-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:478a60329532074705475010428f2e11e8c34a914cbc62f8bcb9655c8f3231b1", size = 1309630, upload-time = "2026-07-05T13:35:14.005Z" },
-    { url = "https://files.pythonhosted.org/packages/3d/81/718ffce7ccbffa23912f0f2631de11fae25ad16fc9cb23c20478874c9130/fenominal-0.2.17-cp37-abi3-win_amd64.whl", hash = "sha256:a0c0d0e71d89e5b0564452ac5e6ab46b2617075d0bff6fdff7f4a9dbd9a98b2a", size = 1030985, upload-time = "2026-07-05T13:35:15.558Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/35/a0a67116cab62dee97ed7a7bec1ff00815fefd00bf3c02ad91aed5f08702/fenominal-0.3.4-cp37-abi3-macosx_10_12_x86_64.whl", hash = "sha256:26d9cb07f76a5783a81d4b0742079bf02dfb51aa2cb93113376c0e535ae38aa9", size = 1173645, upload-time = "2026-10-07T07:36:01.288Z" },
+    { url = "https://files.pythonhosted.org/packages/36/bc/39de4693000ba6508ce7b971d515ea0ea3108e9c0853420c97d0ebe49cea/fenominal-0.3.4-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:f2e85aa9ed1977b9a62847b2d10f517c1781ed4e7cfc9361d4da439c93b99e75", size = 1134258, upload-time = "2026-10-07T07:36:02.903Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/00/adc8e6cac8347657c05e05ec748fb89384a5f7c3d5e55b912609aba9932a/fenominal-0.3.4-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:36caad1793c4b76ef9ab49213e39b975e7021a5d8fb02f830121b4fae92a2aca", size = 1296247, upload-time = "2026-10-07T07:36:04.265Z" },
+    { url = "https://files.pythonhosted.org/packages/75/59/114a3952ad11bb4a080b570fb5bf99ca7d5ebf9b2eedfcdbd618a4a006cf/fenominal-0.3.4-cp37-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:e7b8a586f8ef14194d5ff787a22b617ee3889408fddb19fd9a84e12ef59c4bd2", size = 1304483, upload-time = "2026-10-07T07:36:05.899Z" },
+    { url = "https://files.pythonhosted.org/packages/69/34/b014b2ddef317c74e116e4ebe485eb505ef9637981a263eb982fd62f8717/fenominal-0.3.4-cp37-abi3-win_amd64.whl", hash = "sha256:88bfa75b7899e77c8b682e02f428c554eb240edfa02b5dfbc25b3b4b92d6b2d9", size = 1034252, upload-time = "2026-10-07T07:36:07.351Z" },
 ]
 
 [[package]]
@@ -2447,7 +2447,7 @@ requires-dist = [
     { name = "click", specifier = "==8.3.3" },
     { name = "docling", marker = "extra == 'ocr'", specifier = "==2.138.0" },
     { name = "fasthpocr", marker = "extra == 'fast-hpo-cr'", specifier = "==0.1.4" },
-    { name = "fenominal", specifier = "==0.2.17" },
+    { name = "fenominal", specifier = "==0.3.4" },
     { name = "ferrific", marker = "extra == 'ferrific'", specifier = "==0.2.1" },
     { name = "hpo-toolkit", specifier = "==0.5.5" },
     { name = "ijson", specifier = "==3.4.0" },

@@ -44,7 +44,7 @@ dependencies = [
  "rich==14.1.0",
  "stairval==0.2.1",
  #"typer==0.17.4",
- "fenominal==0.2.17",
+ "fenominal==0.3.4",
 ]
 
 [project.optional-dependencies]
