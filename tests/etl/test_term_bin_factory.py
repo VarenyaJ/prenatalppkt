@@ -5,7 +5,6 @@ Tests the factory's ability to create TermBin objects from raw measurements
 using existing percentile range and mapping infrastructure.
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,6 +17,7 @@ from prenatalppkt.etl.constants import (
     VIEWPOINT_TEXT_NAME_MAP,
 )
 from prenatalppkt.etl.term_bin_factory import (
+    DEFAULT_MAPPINGS_PATH,
     DELIBERATELY_UNMAPPED_MEASUREMENTS,
     TermBinFactory,
     validate_required_measurements,
@@ -28,7 +28,7 @@ from prenatalppkt.gestational_age import GestationalAge
 @pytest.fixture
 def factory():
     """Create a TermBinFactory instance for testing."""
-    # Uses default path: data/mappings/biometry_hpo_mappings.yaml
+    # Uses the bundled biometry_hpo_mappings.yaml
     f = TermBinFactory()
     return f
 
@@ -528,13 +528,7 @@ class TestTermBinFactoryIntegration:
     """
 
     @pytest.mark.skipif(
-        not (
-            Path(__file__).parent.parent.parent
-            / "data"
-            / "mappings"
-            / "biometry_hpo_mappings.yaml"
-        ).exists(),
-        reason="Mapping file not found",
+        not DEFAULT_MAPPINGS_PATH.exists(), reason="Mapping file not found"
     )
     def test_create_with_real_mappings(self):
         """

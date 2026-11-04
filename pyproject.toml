@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=80.9.0", "wheel==0.45.1", "setuptools_scm==8.3.1"]
+requires = ["setuptools==84.0.0", "setuptools_scm==8.3.1", "packaging==26.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -85,6 +85,9 @@ prenatalppkt = "prenatalppkt.cli:main"
 
 [tool.setuptools]
 packages.find = { where = ["src"] }
+
+[tool.setuptools.package-data]
+prenatalppkt = ["data/mappings/*.yaml", "data/mappings/README.md"]
 
 [tool.setuptools_scm]
 version_file = "src/prenatalppkt/_version.py"

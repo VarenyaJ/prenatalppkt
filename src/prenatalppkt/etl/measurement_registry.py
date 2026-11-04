@@ -16,18 +16,15 @@ from typing import Dict, FrozenSet, Mapping, Optional, Tuple
 
 import yaml
 
+from prenatalppkt.data_files import MAPPINGS_DIR
+
 ROLES: FrozenSet[str] = frozenset({"required", "optional", "t1"})
 SOURCES: Tuple[str, ...] = ("observer", "viewpoint_text", "viewpoint_hl7", "generic")
 _FIELDS: FrozenSet[str] = frozenset(
     {"role", "yaml_key", "unmapped_reason", "aliases", "guessed_aliases"}
 )
 
-DEFAULT_REGISTRY_PATH = (
-    Path(__file__).parent.parent.parent.parent
-    / "data"
-    / "mappings"
-    / "measurement_registry.yaml"
-)
+DEFAULT_REGISTRY_PATH = MAPPINGS_DIR / "measurement_registry.yaml"
 
 
 @dataclass(frozen=True)
@@ -97,7 +94,7 @@ def load_registry(path: Optional[Path] = None) -> Dict[str, MeasurementSpec]:
     Load and check the measurement registry.
 
     Args:
-        path: Registry YAML; defaults to data/mappings/measurement_registry.yaml
+        path: Registry YAML; defaults to the bundled measurement_registry.yaml
 
     Returns:
         Measurement specs keyed by standard measurement name, in file order

@@ -12,7 +12,7 @@ import yaml
 from prenatalppkt.biometry_reference import FetalGrowthPercentiles
 from prenatalppkt.biometry_type import BiometryType
 from prenatalppkt.gestational_age import GestationalAge
-from prenatalppkt.measurement_eval import MeasurementEvaluation
+from prenatalppkt.measurement_eval import DEFAULT_MAPPINGS_FILE, MeasurementEvaluation
 from prenatalppkt.measurements.percentile_range import PercentileRange
 from prenatalppkt.measurements.term_bin import TermBin
 from prenatalppkt.term_observation import TermObservation
@@ -49,12 +49,7 @@ class PhenotypicExporter:
         self.reference = FetalGrowthPercentiles(source=source)
         self.evaluator = MeasurementEvaluation(mappings_path=mappings_path)
 
-        self._mappings_path = mappings_path or (
-            Path(__file__).resolve().parent.parents[1]
-            / "data"
-            / "mappings"
-            / "biometry_hpo_mappings.yaml"
-        )
+        self._mappings_path = mappings_path or DEFAULT_MAPPINGS_FILE
 
         logger.info("Initialized PhenotypicExporter with %s reference", source)
 

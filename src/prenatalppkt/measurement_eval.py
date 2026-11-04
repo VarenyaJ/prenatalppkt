@@ -7,11 +7,11 @@ from typing import Optional, Dict, List
 import logging
 
 from prenatalppkt.sonographic_measurement import SonographicMeasurement
+from prenatalppkt.data_files import MAPPINGS_DIR
 from prenatalppkt.mapping_loader import BiometryMappingLoader
 
 logger = logging.getLogger(__name__)
 
-MAPPINGS_DIR = Path(__file__).resolve().parent.parents[1] / "data" / "mappings"
 DEFAULT_MAPPINGS_FILE = MAPPINGS_DIR / "biometry_hpo_mappings.yaml"
 
 

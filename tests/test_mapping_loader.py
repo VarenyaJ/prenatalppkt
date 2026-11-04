@@ -5,11 +5,12 @@ test_mapping_loader.py - Tests for BiometryMappingLoader
 import pytest
 from pathlib import Path
 from prenatalppkt.mapping_loader import BiometryMappingLoader
+from prenatalppkt.measurement_eval import DEFAULT_MAPPINGS_FILE
 
 
 def test_load_mappings():
     """Test loading mappings from YAML."""
-    yaml_path = Path("data/mappings/biometry_hpo_mappings.yaml")
+    yaml_path = DEFAULT_MAPPINGS_FILE
 
     if not yaml_path.exists():
         pytest.skip("YAML file not found")
@@ -91,7 +92,7 @@ occipitofrontal_diameter:
 
 def test_bundled_yaml_has_loinc_for_four_core_measurements():
     """The shipped YAML carries verified LOINC codes for HC/BPD/AC/FL."""
-    yaml_path = Path("data/mappings/biometry_hpo_mappings.yaml")
+    yaml_path = DEFAULT_MAPPINGS_FILE
     if not yaml_path.exists():
         pytest.skip("YAML file not found")
 
