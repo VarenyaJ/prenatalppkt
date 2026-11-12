@@ -50,6 +50,13 @@ from prenatalppkt.etl.hl7_rows import read_hl7_rows
 rows = read_hl7_rows(text)
 ```
 
+Files are decoded with `decode_hl7_bytes`: UTF-8 when the bytes are valid
+UTF-8, otherwise the charset declared in MSH-18 (`8859/15` or `8859/1`). The
+result records the codec used and the declared charset; an export that is not
+UTF-8 and declares no supported charset raises `Hl7EncodingError` naming the
+declared value. UTF-8 goes first because ViewPoint exports declaring
+`8859/15` have been seen to contain UTF-8 text.
+
 ### 2. Scan typing
 
 Main module:
