@@ -10,7 +10,7 @@ Tests for ViewPoint HL7 extractor.
 import pytest
 from pathlib import Path
 from prenatalppkt.etl.extractors import viewpoint_hl7
-from prenatalppkt.etl.hl7_rows import Hl7ParseError
+from prenatalppkt.etl.hl7_rows import Hl7EncodingError, Hl7ParseError
 from prenatalppkt.etl.term_bin_factory import TermBinFactory
 from prenatalppkt.measurements.term_bin import TermBin
 
@@ -661,3 +661,33 @@ class TestViewPointHL7SharedRowReader:
         segments = [*_SYNTHETIC_HC_SEGMENTS, "OBX|x|NM|SkullFetus.HeadCircumference"]
         with pytest.raises(Hl7ParseError, match="HL7 line 4: OBX-1"):
             viewpoint_hl7.extract("\r\n".join(segments))
+
+
+class TestViewPointHL7FileEncoding:
+    """Files are decoded UTF-8 first, then with the charset MSH-18 declares."""
+
+    @staticmethod
+    def _write(tmp_path, charset, encoding):
+        msh = _SYNTHETIC_HC_SEGMENTS[0] + f"|||AL|NE||{charset}"
+        # A synthetic free-text row with a non-ASCII character (e acute).
+        comment = "OBX|3|ST|ExamAddData.Comment^Comment||caf\u00e9"
+        text = "\r\n".join([msh, *_SYNTHETIC_HC_SEGMENTS[1:], comment])
+        path = tmp_path / "synthetic_export.txt"
+        path.write_bytes(text.encode(encoding))
+        return path
+
+    def test_latin9_bytes_with_latin9_declaration(self, tmp_path):
+        """Not valid UTF-8; used to raise UnicodeDecodeError."""
+        path = self._write(tmp_path, "8859/15", "iso8859_15")
+        bins = viewpoint_hl7.extract_all_fetuses_from_file(path)
+        assert len(bins[1]) == 1
+        assert len(viewpoint_hl7.extract_from_file(path)) == 1
+
+    def test_utf8_bytes_with_latin9_declaration(self, tmp_path):
+        path = self._write(tmp_path, "8859/15", "utf-8")
+        assert len(viewpoint_hl7.extract_all_fetuses_from_file(path)[1]) == 1
+
+    def test_unknown_declaration_on_non_utf8_bytes(self, tmp_path):
+        path = self._write(tmp_path, "SYNTHETIC/99", "latin-1")
+        with pytest.raises(Hl7EncodingError, match="SYNTHETIC/99"):
+            viewpoint_hl7.extract_all_fetuses_from_file(path)

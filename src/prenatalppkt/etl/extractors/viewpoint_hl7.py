@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from prenatalppkt.etl.constants import VIEWPOINT_HL7_NAME_MAP
-from prenatalppkt.etl.hl7_rows import Hl7Row, read_hl7_rows
+from prenatalppkt.etl.hl7_rows import Hl7Row, decode_hl7_bytes, read_hl7_rows
 from prenatalppkt.etl.term_bin_factory import TermBinFactory
 from prenatalppkt.gestational_age import GestationalAge
 from prenatalppkt.measurements.term_bin import TermBin
@@ -95,10 +95,12 @@ def extract_from_file(filepath: Path, factory: TermBinFactory = None) -> List[Te
 
     Returns:
         List of TermBin objects
+
+    Raises:
+        Hl7EncodingError: (a ValueError) If the file is neither UTF-8 nor in
+            a supported charset declared in MSH-18.
     """
-    with open(filepath, "r", encoding="utf-8") as f:
-        data = f.read()
-    return extract(data, factory)
+    return extract(_read_export_text(filepath), factory)
 
 
 def _parse_fetus_number(fetus_id: str) -> int:
@@ -154,9 +156,23 @@ def extract_all_fetuses_from_file(
     filepath: Path, factory: TermBinFactory = None
 ) -> Dict[int, List[TermBin]]:
     """Multi-fetus equivalent of `extract_from_file`."""
-    with open(filepath, "r", encoding="utf-8") as f:
-        data = f.read()
-    return extract_all_fetuses(data, factory)
+    return extract_all_fetuses(_read_export_text(filepath), factory)
+
+
+def _read_export_text(filepath: Path) -> str:
+    """
+    Read an export file as text: UTF-8 first, else the charset MSH-18 declares.
+
+    The codec used is logged, since a file decoded with the declared charset
+    may read differently from the same bytes taken as UTF-8.
+    """
+    decoded = decode_hl7_bytes(Path(filepath).read_bytes())
+    logger.info(
+        "Decoded ViewPoint HL7 export as %s (MSH-18 declares %r)",
+        decoded.encoding,
+        decoded.declared_charset,
+    )
+    return decoded.text
 
 
 def _fetus_key(row: Hl7Row) -> int:
