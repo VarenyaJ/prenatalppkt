@@ -10,6 +10,7 @@ Tests for ViewPoint HL7 extractor.
 import pytest
 from pathlib import Path
 from prenatalppkt.etl.extractors import viewpoint_hl7
+from prenatalppkt.etl.hl7_rows import Hl7ParseError
 from prenatalppkt.etl.term_bin_factory import TermBinFactory
 from prenatalppkt.measurements.term_bin import TermBin
 
@@ -630,3 +631,33 @@ class TestViewPointHL7ExtractAllFetusesFromFile:
         assert set(result.keys()) == {1, 2}
         assert len(result[1]) == 4
         assert len(result[2]) == 4
+
+
+# Synthetic one-measurement message, values made up.
+_SYNTHETIC_HC_SEGMENTS = [
+    "MSH|^~\\&|GE|ViewPoint|Discrete||20260101120000||ORU^R01|SYN-1|P|2.4",
+    "OBX|1|NM|SkullFetus.HeadCircumference^HC|Fetus1|205^205.0|mm&millimeters",
+    "OBX|2|NM|SkullFetus.VP_HeadCircumference_Percentile|Fetus1|45^45%|%&percent",
+]
+
+
+class TestViewPointHL7SharedRowReader:
+    """The extractor reads segments through `prenatalppkt.etl.hl7_rows`."""
+
+    def test_carriage_return_only_message(self):
+        """HL7's own segment terminator is a bare CR; such files used to yield nothing."""
+        bins = viewpoint_hl7.extract_all_fetuses("\r".join(_SYNTHETIC_HC_SEGMENTS))
+        assert set(bins) == {1}
+        assert len(bins[1]) == 1
+        assert "HC" in bins[1][0].description
+
+    def test_bare_number_sub_id_still_groups_by_its_digits(self):
+        """Non-"Fetus<N>" sub-ids keep the old trailing-digits grouping."""
+        segments = [s.replace("|Fetus1|", "|2|") for s in _SYNTHETIC_HC_SEGMENTS]
+        bins = viewpoint_hl7.extract_all_fetuses("\r\n".join(segments))
+        assert set(bins) == {2}
+
+    def test_malformed_segment_names_its_line(self):
+        segments = [*_SYNTHETIC_HC_SEGMENTS, "OBX|x|NM|SkullFetus.HeadCircumference"]
+        with pytest.raises(Hl7ParseError, match="HL7 line 4: OBX-1"):
+            viewpoint_hl7.extract("\r\n".join(segments))
