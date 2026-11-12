@@ -11,7 +11,14 @@ from pathlib import Path
 
 import pytest
 
-from prenatalppkt.etl.hl7_rows import Hl7Encoding, Hl7ParseError, read_hl7_rows
+from prenatalppkt.etl.hl7_rows import (
+    DecodedHl7,
+    Hl7Encoding,
+    Hl7EncodingError,
+    Hl7ParseError,
+    decode_hl7_bytes,
+    read_hl7_rows,
+)
 
 TWINS_FIXTURE = Path(__file__).parent.parent / "data" / "viewpoint_hl7_twins_test.txt"
 
@@ -139,7 +146,7 @@ class TestLayout:
         assert rows[0].line_number == 8
 
     def test_byte_order_mark(self):
-        rows = read_hl7_rows("﻿" + "\r".join(SYNTHETIC_MESSAGE))
+        rows = read_hl7_rows("\ufeff" + "\r".join(SYNTHETIC_MESSAGE))
         assert len(rows) == 4
 
     def test_no_obx_segments(self):
@@ -256,3 +263,79 @@ class TestCommittedFixture:
         assert {row.fetus_number for row in rows} == {1, 2}
         assert {row.value_type for row in rows} == {"NM", "ST"}
         assert all(row.observed_at is not None for row in rows)
+
+
+def _export_text(charset_field, text_value):
+    """Synthetic export: MSH declaring `charset_field` in MSH-18, one ST row.
+
+    Tests encode it with whichever codec they need.
+    """
+    msh = "MSH|^~\\&|GE|ViewPoint|Discrete||20260101120000||ORU^R01|SYN-1|P|2.4"
+    msh += f"|||AL|NE||{charset_field}"
+    return f"{msh}\r\nOBX|1|ST|ExamAddData.Comment^Comment||{text_value}\r\n"
+
+
+class TestDecodeHl7Bytes:
+    """UTF-8 first; the MSH-18 charset only when UTF-8 fails."""
+
+    def test_valid_utf8_wins_over_latin9_declaration(self):
+        raw = _export_text("8859/15", "caf\u00e9 \u20ac").encode("utf-8")
+        decoded = decode_hl7_bytes(raw)
+        assert decoded == DecodedHl7(
+            text=raw.decode("utf-8"), encoding="utf-8", declared_charset="8859/15"
+        )
+        assert read_hl7_rows(decoded.text)[0].value == "caf\u00e9 \u20ac"
+
+    def test_invalid_utf8_falls_back_to_declared_latin9(self):
+        # 0xE9 alone is not UTF-8; 0xA4 is the euro sign in ISO 8859-15
+        # (it would be the generic currency sign in ISO 8859-1).
+        raw = _export_text("8859/15", "caf\u00e9 \u20ac").encode("iso8859_15")
+        with pytest.raises(UnicodeDecodeError):
+            raw.decode("utf-8")
+        decoded = decode_hl7_bytes(raw)
+        assert decoded.encoding == "iso8859_15"
+        assert decoded.declared_charset == "8859/15"
+        assert read_hl7_rows(decoded.text)[0].value == "caf\u00e9 \u20ac"
+
+    def test_invalid_utf8_falls_back_to_declared_latin1(self):
+        raw = _export_text("8859/1", "caf\u00e9").encode("latin-1")
+        decoded = decode_hl7_bytes(raw)
+        assert decoded.encoding == "latin-1"
+        assert read_hl7_rows(decoded.text)[0].value == "caf\u00e9"
+
+    def test_first_repetition_of_charset_field(self):
+        raw = _export_text("8859/15~UNICODE UTF-8", "caf\u00e9").encode("iso8859_15")
+        assert decode_hl7_bytes(raw).encoding == "iso8859_15"
+
+    def test_utf8_byte_order_mark(self):
+        raw = b"\xef\xbb\xbf" + _export_text("8859/15", "x").encode("utf-8")
+        decoded = decode_hl7_bytes(raw)
+        assert decoded.encoding == "utf-8"
+        assert decoded.declared_charset == "8859/15"
+        assert len(read_hl7_rows(decoded.text)) == 1
+
+    def test_unknown_declared_charset_is_named(self):
+        raw = _export_text("SYNTHETIC/99", "caf\u00e9").encode("latin-1")
+        with pytest.raises(Hl7EncodingError, match="'SYNTHETIC/99'") as caught:
+            decode_hl7_bytes(raw)
+        assert caught.value.declared_charset == "SYNTHETIC/99"
+        assert "caf" not in str(caught.value)
+
+    def test_missing_declaration(self):
+        raw = _export_text("", "caf\u00e9").encode("latin-1")
+        with pytest.raises(Hl7EncodingError, match="no charset declared"):
+            decode_hl7_bytes(raw)
+
+    def test_unknown_declaration_is_fine_when_utf8_decodes(self):
+        decoded = decode_hl7_bytes(_export_text("SYNTHETIC/99", "x").encode())
+        assert decoded.encoding == "utf-8"
+        assert decoded.declared_charset == "SYNTHETIC/99"
+
+    def test_is_a_value_error(self):
+        with pytest.raises(ValueError):
+            decode_hl7_bytes(b"MSH|^~\\&|GE\r\nOBX|1|ST|A.B||\xff")
+
+    def test_committed_fixture_declares_latin9(self):
+        decoded = decode_hl7_bytes(TWINS_FIXTURE.read_bytes())
+        assert decoded.encoding == "utf-8"
+        assert decoded.declared_charset == "8859/15"

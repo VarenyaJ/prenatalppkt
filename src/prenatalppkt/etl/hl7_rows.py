@@ -27,6 +27,10 @@ What the reader does not do, on purpose:
   site-specific forms (``U_*`` namespaces); callers filter by
   ``namespace``/``field_id``.
 
+For files, :func:`decode_hl7_bytes` turns the raw bytes into text first:
+UTF-8 when the bytes are valid UTF-8, otherwise the charset the message
+declares in MSH-18, and it reports which one it used.
+
 Error messages name the line number, segment and HL7 field position but never
 echo field contents: exports carry patient data, and these messages end up in
 logs and bug reports.
@@ -225,7 +229,7 @@ def read_hl7_rows(text: str) -> list[Hl7Row]:
     rows: list[Hl7Row] = []
     message: _MessageContext | None = None
     for line_number, raw_line in enumerate(_LINE_BREAK.split(text), start=1):
-        line = raw_line.strip().lstrip("﻿")
+        line = raw_line.strip().lstrip("\ufeff")
         if not line:
             continue
         if line.startswith("MSH"):
@@ -371,3 +375,98 @@ def _parse_offset(raw: str | None) -> timezone | None:
     sign = -1 if raw[0] == "-" else 1
     offset = timedelta(hours=int(raw[1:3]), minutes=int(raw[3:5]))
     return timezone(sign * offset)
+
+
+# Decoding an export's bytes
+#
+# ViewPoint declares its character set in MSH-18 (for example "8859/15",
+# ISO 8859-15), but exports written that way have been seen to contain
+# characters that are in fact valid UTF-8. UTF-8 is therefore tried first:
+# its multi-byte sequences are strict enough that Latin text almost never
+# decodes as UTF-8 by accident. Only when UTF-8 fails is the declared charset
+# used. The encoding actually used is returned with the text so callers can
+# record it.
+
+# HL7 table 0211 names -> Python codec names, for the charsets a UTF-8
+# failure can fall back to.
+_HL7_CHARSETS = {"8859/1": "latin-1", "8859/15": "iso8859_15"}
+
+# MSH-18, character set; MSH-n sits at index n - 1 after splitting (see above).
+_MSH_CHARSET_INDEX = 17
+
+
+class Hl7EncodingError(ValueError):
+    """Export bytes that are not UTF-8 and whose declared charset is unusable.
+
+    Attributes:
+        declared_charset: MSH-18 as declared (``""`` when absent).
+    """
+
+    def __init__(self, declared_charset: str, reason: str) -> None:
+        self.declared_charset = declared_charset
+        super().__init__(reason)
+
+
+@dataclass(frozen=True)
+class DecodedHl7:
+    """An export's text plus how it was decoded.
+
+    Attributes:
+        text: The decoded export, ready for :func:`read_hl7_rows`.
+        encoding: Python codec that decoded it: ``"utf-8"``, or the codec
+            mapped from MSH-18 when UTF-8 failed (``"iso8859_15"``, ...).
+        declared_charset: MSH-18 of the first message as declared
+            (``"8859/15"``), ``""`` when absent. Kept even when UTF-8 was used,
+            so a mismatch between declaration and content stays visible.
+    """
+
+    text: str
+    encoding: str
+    declared_charset: str
+
+
+def decode_hl7_bytes(raw: bytes) -> DecodedHl7:
+    """Decode an HL7 export: UTF-8 first, then the charset MSH-18 declares.
+
+    Args:
+        raw: The export file's bytes.
+
+    Returns:
+        The text with the codec used and the declared charset.
+
+    Raises:
+        Hl7EncodingError: The bytes are not UTF-8 and MSH-18 names no charset,
+            or one this reader has no codec for. The message names the
+            declared value.
+    """
+    declared = _declared_charset(raw)
+    try:
+        return DecodedHl7(raw.decode("utf-8"), "utf-8", declared)
+    except UnicodeDecodeError:
+        pass
+    codec = _HL7_CHARSETS.get(declared)
+    if codec is None:
+        if declared:
+            reason = f"declared charset {declared!r} (MSH-18) is not supported"
+        else:
+            reason = "no charset declared in MSH-18"
+        raise Hl7EncodingError(
+            declared, f"HL7 export is not valid UTF-8 and {reason}"
+        ) from None
+    return DecodedHl7(raw.decode(codec), codec, declared)
+
+
+def _declared_charset(raw: bytes) -> str:
+    """MSH-18 of the first MSH segment, first repetition; ``""`` if absent."""
+    # Latin-1 maps every byte to one character, so this never fails and the
+    # ASCII header fields read correctly whatever the real encoding is.
+    for line in _LINE_BREAK.split(raw.decode("latin-1")):
+        # A UTF-8 byte order mark reads as these three Latin-1 characters.
+        line = line.strip().lstrip("\xef\xbb\xbf")
+        if line.startswith("MSH") and len(line) > 3:
+            fields = line.split(line[3])
+            if len(fields) <= _MSH_CHARSET_INDEX or len(fields[1]) < 2:
+                return ""
+            repetition = fields[1][1]
+            return fields[_MSH_CHARSET_INDEX].split(repetition)[0].strip()
+    return ""
