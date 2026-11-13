@@ -24,6 +24,13 @@ explain how these pieces fit together.
 :undoc-members:
 ```
 
+## HL7 row reader
+
+```{automodule} prenatalppkt.etl.hl7_rows
+:members:
+:undoc-members:
+```
+
 ## Section parsers
 
 ```{automodule} prenatalppkt.etl.sections

@@ -10,6 +10,7 @@ Tests for ViewPoint HL7 extractor.
 import pytest
 from pathlib import Path
 from prenatalppkt.etl.extractors import viewpoint_hl7
+from prenatalppkt.etl.hl7_rows import Hl7EncodingError, Hl7ParseError
 from prenatalppkt.etl.term_bin_factory import TermBinFactory
 from prenatalppkt.measurements.term_bin import TermBin
 
@@ -630,3 +631,63 @@ class TestViewPointHL7ExtractAllFetusesFromFile:
         assert set(result.keys()) == {1, 2}
         assert len(result[1]) == 4
         assert len(result[2]) == 4
+
+
+# Synthetic one-measurement message, values made up.
+_SYNTHETIC_HC_SEGMENTS = [
+    "MSH|^~\\&|GE|ViewPoint|Discrete||20260101120000||ORU^R01|SYN-1|P|2.4",
+    "OBX|1|NM|SkullFetus.HeadCircumference^HC|Fetus1|205^205.0|mm&millimeters",
+    "OBX|2|NM|SkullFetus.VP_HeadCircumference_Percentile|Fetus1|45^45%|%&percent",
+]
+
+
+class TestViewPointHL7SharedRowReader:
+    """The extractor reads segments through `prenatalppkt.etl.hl7_rows`."""
+
+    def test_carriage_return_only_message(self):
+        """HL7's own segment terminator is a bare CR; such files used to yield nothing."""
+        bins = viewpoint_hl7.extract_all_fetuses("\r".join(_SYNTHETIC_HC_SEGMENTS))
+        assert set(bins) == {1}
+        assert len(bins[1]) == 1
+        assert "HC" in bins[1][0].description
+
+    def test_bare_number_sub_id_still_groups_by_its_digits(self):
+        """Non-"Fetus<N>" sub-ids keep the old trailing-digits grouping."""
+        segments = [s.replace("|Fetus1|", "|2|") for s in _SYNTHETIC_HC_SEGMENTS]
+        bins = viewpoint_hl7.extract_all_fetuses("\r\n".join(segments))
+        assert set(bins) == {2}
+
+    def test_malformed_segment_names_its_line(self):
+        segments = [*_SYNTHETIC_HC_SEGMENTS, "OBX|x|NM|SkullFetus.HeadCircumference"]
+        with pytest.raises(Hl7ParseError, match="HL7 line 4: OBX-1"):
+            viewpoint_hl7.extract("\r\n".join(segments))
+
+
+class TestViewPointHL7FileEncoding:
+    """Files are decoded UTF-8 first, then with the charset MSH-18 declares."""
+
+    @staticmethod
+    def _write(tmp_path, charset, encoding):
+        msh = _SYNTHETIC_HC_SEGMENTS[0] + f"|||AL|NE||{charset}"
+        # A synthetic free-text row with a non-ASCII character (e acute).
+        comment = "OBX|3|ST|ExamAddData.Comment^Comment||caf\u00e9"
+        text = "\r\n".join([msh, *_SYNTHETIC_HC_SEGMENTS[1:], comment])
+        path = tmp_path / "synthetic_export.txt"
+        path.write_bytes(text.encode(encoding))
+        return path
+
+    def test_latin9_bytes_with_latin9_declaration(self, tmp_path):
+        """Not valid UTF-8; used to raise UnicodeDecodeError."""
+        path = self._write(tmp_path, "8859/15", "iso8859_15")
+        bins = viewpoint_hl7.extract_all_fetuses_from_file(path)
+        assert len(bins[1]) == 1
+        assert len(viewpoint_hl7.extract_from_file(path)) == 1
+
+    def test_utf8_bytes_with_latin9_declaration(self, tmp_path):
+        path = self._write(tmp_path, "8859/15", "utf-8")
+        assert len(viewpoint_hl7.extract_all_fetuses_from_file(path)[1]) == 1
+
+    def test_unknown_declaration_on_non_utf8_bytes(self, tmp_path):
+        path = self._write(tmp_path, "SYNTHETIC/99", "latin-1")
+        with pytest.raises(Hl7EncodingError, match="SYNTHETIC/99"):
+            viewpoint_hl7.extract_all_fetuses_from_file(path)
