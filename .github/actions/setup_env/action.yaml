@@ -16,7 +16,7 @@ runs:
               pyproject-file-path: ${{ inputs.pyproject-file-path }}
 
         -   name: Cache Env
-            uses: actions/cache@v4.2.3
+            uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
             id: env-cache
             with:
                 path: ${{ env.pythonLocation }}
