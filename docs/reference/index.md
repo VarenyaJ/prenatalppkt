@@ -19,6 +19,7 @@ Use it when you need to answer:
 | Observer extraction | `prenatalppkt.etl.extractors.observer` | Reads Observer JSON measurements |
 | ViewPoint text extraction | `prenatalppkt.etl.extractors.viewpoint_text` | Reads ViewPoint text biometry |
 | ViewPoint HL7 extraction | `prenatalppkt.etl.extractors.viewpoint_hl7` | Reads ViewPoint HL7 OBX biometry |
+| HL7 row reading | `prenatalppkt.etl.hl7_rows` | Splits every OBX segment of a ViewPoint HL7 export into a typed row |
 | Section parsing | `prenatalppkt.etl.sections` | Reads non-biometry report sections |
 | Scan typing | `prenatalppkt.etl.scan_type` | Classifies first-trimester, T2/T3, and unknown scan shapes |
 | Mapping loader | `prenatalppkt.mapping_loader` | Loads YAML HPO mapping rules |

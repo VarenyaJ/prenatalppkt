@@ -37,6 +37,26 @@ observer.extract_from_file(path)
 observer.extract_all_fetuses_from_file(path)
 ```
 
+The ViewPoint HL7 extractor does not split segments itself. It reads them
+through `src/prenatalppkt/etl/hl7_rows.py`, which turns every OBX segment into
+a frozen `Hl7Row` (set id, value type, OBX-3 identifier and label, OBX-4
+sub-id and fetus number, OBX-5 value, OBX-6 units, observation time, line
+number) and raises `Hl7ParseError` naming the line when a segment is
+malformed. New HL7 readers should start from these rows.
+
+```python
+from prenatalppkt.etl.hl7_rows import read_hl7_rows
+
+rows = read_hl7_rows(text)
+```
+
+Files are decoded with `decode_hl7_bytes`: UTF-8 when the bytes are valid
+UTF-8, otherwise the charset declared in MSH-18 (`8859/15` or `8859/1`). The
+result records the codec used and the declared charset; an export that is not
+UTF-8 and declares no supported charset raises `Hl7EncodingError` naming the
+declared value. UTF-8 goes first because ViewPoint exports declaring
+`8859/15` have been seen to contain UTF-8 text.
+
 ### 2. Scan typing
 
 Main module:

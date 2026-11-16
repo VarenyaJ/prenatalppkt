@@ -2,7 +2,9 @@
 ViewPoint HL7 message biometry extractor.
 
 Extracts fetal biometry measurements from ViewPoint HL7 message exports
-and converts them directly to TermBin objects.
+and converts them directly to TermBin objects. Segment splitting is left to
+the shared row reader (`prenatalppkt.etl.hl7_rows`); this module only decides
+which rows are biometry and what their values mean.
 """
 
 import logging
@@ -11,6 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from prenatalppkt.etl.constants import VIEWPOINT_HL7_NAME_MAP
+from prenatalppkt.etl.hl7_rows import Hl7Row, decode_hl7_bytes, read_hl7_rows
 from prenatalppkt.etl.term_bin_factory import TermBinFactory
 from prenatalppkt.gestational_age import GestationalAge
 from prenatalppkt.measurements.term_bin import TermBin
@@ -34,6 +37,8 @@ def extract(data: str, factory: TermBinFactory = None) -> List[TermBin]:
 
     Raises:
         ValueError: If HL7 format is invalid or required measurements missing
+        Hl7ParseError: (a ValueError) If a segment is malformed; the message
+            names the line.
     """
     if factory is None:
         factory = TermBinFactory()
@@ -44,15 +49,15 @@ def extract(data: str, factory: TermBinFactory = None) -> List[TermBin]:
     logger.debug("Starting HL7 extraction")
 
     # Parse OBX segments
-    obx_segments = _extract_obx_segments(data)
-    logger.debug(f"Found {len(obx_segments)} OBX segments")
+    obx_rows = read_hl7_rows(data)
+    logger.debug(f"Found {len(obx_rows)} OBX segments")
 
-    if not obx_segments:
+    if not obx_rows:
         logger.warning("No OBX segments found in HL7 message")
         return []
 
     # Group measurements by fetus
-    measurements_by_fetus = _group_measurements_by_fetus(obx_segments)
+    measurements_by_fetus = _group_measurements_by_fetus(obx_rows)
     logger.debug(f"Grouped into {len(measurements_by_fetus)} fetus records")
     logger.debug(f"Fetus IDs: {list(measurements_by_fetus.keys())}")
 
@@ -90,10 +95,12 @@ def extract_from_file(filepath: Path, factory: TermBinFactory = None) -> List[Te
 
     Returns:
         List of TermBin objects
+
+    Raises:
+        Hl7EncodingError: (a ValueError) If the file is neither UTF-8 nor in
+            a supported charset declared in MSH-18.
     """
-    with open(filepath, "r", encoding="utf-8") as f:
-        data = f.read()
-    return extract(data, factory)
+    return extract(_read_export_text(filepath), factory)
 
 
 def _parse_fetus_number(fetus_id: str) -> int:
@@ -124,6 +131,7 @@ def extract_all_fetuses(
 
     Raises:
         ValueError: If data is not a string.
+        Hl7ParseError: (a ValueError) If a segment is malformed.
     """
     if factory is None:
         factory = TermBinFactory()
@@ -131,16 +139,15 @@ def extract_all_fetuses(
     if not isinstance(data, str):
         raise ValueError(f"Expected string, got {type(data)}")
 
-    obx_segments = _extract_obx_segments(data)
-    if not obx_segments:
+    obx_rows = read_hl7_rows(data)
+    if not obx_rows:
         logger.warning("No OBX segments found in HL7 message")
         return {}
 
-    measurements_by_fetus = _group_measurements_by_fetus(obx_segments)
+    measurements_by_fetus = _group_measurements_by_fetus(obx_rows)
 
     result: Dict[int, List[TermBin]] = {}
-    for fetus_id, measurements in measurements_by_fetus.items():
-        fetus_number = _parse_fetus_number(fetus_id)
+    for fetus_number, measurements in measurements_by_fetus.items():
         result[fetus_number] = _create_term_bins(measurements, factory)
     return result
 
@@ -149,34 +156,53 @@ def extract_all_fetuses_from_file(
     filepath: Path, factory: TermBinFactory = None
 ) -> Dict[int, List[TermBin]]:
     """Multi-fetus equivalent of `extract_from_file`."""
-    with open(filepath, "r", encoding="utf-8") as f:
-        data = f.read()
-    return extract_all_fetuses(data, factory)
+    return extract_all_fetuses(_read_export_text(filepath), factory)
 
 
-def _extract_obx_segments(data: str) -> List[str]:
-    """Extract all OBX segments from HL7 message."""
-    lines = data.split("\n")
-    segments = [line.strip() for line in lines if line.strip().startswith("OBX|")]
-    logger.debug(f"Extracted {len(segments)} OBX segments")
-    return segments
+def _read_export_text(filepath: Path) -> str:
+    """
+    Read an export file as text: UTF-8 first, else the charset MSH-18 declares.
+
+    The codec used is logged, since a file decoded with the declared charset
+    may read differently from the same bytes taken as UTF-8.
+    """
+    decoded = decode_hl7_bytes(Path(filepath).read_bytes())
+    logger.info(
+        "Decoded ViewPoint HL7 export as %s (MSH-18 declares %r)",
+        decoded.encoding,
+        decoded.declared_charset,
+    )
+    return decoded.text
 
 
-def _group_measurements_by_fetus(obx_segments: List[str]) -> Dict[str, Dict[str, any]]:
+def _fetus_key(row: Hl7Row) -> int:
+    """
+    Fetus number a biometry row belongs to.
+
+    `Hl7Row.fetus_number` covers the "Fetus<N>" sub-ids ViewPoint writes.
+    For anything else this keeps the rule biometry grouping always used: the
+    trailing digits of OBX-4, or fetus 1 when OBX-4 is empty or has none.
+    """
+    if row.fetus_number is not None:
+        return row.fetus_number
+    return _parse_fetus_number(row.sub_id)
+
+
+def _group_measurements_by_fetus(obx_rows: List[Hl7Row]) -> Dict[int, Dict[str, any]]:
     """
     Group measurement data by fetus.
 
     Returns:
-        Dict mapping fetus_id -> {measurement_name -> {value, unit, percentile, ga, method}}
+        Dict mapping fetus_number -> {measurement_name -> {value, unit, percentile, ga, method}}
     """
     measurements = {}
 
-    logger.debug(f"Processing {len(obx_segments)} OBX segments")
+    logger.debug(f"Processing {len(obx_rows)} OBX segments")
 
-    for i, segment in enumerate(obx_segments):
-        logger.debug(f"[{i}] Processing: {segment[:80]}...")
+    for i, row in enumerate(obx_rows):
+        logger.debug(f"[{i}] Processing OBX on line {row.line_number}")
 
-        result = _process_obx_segment(segment)
+        result = _process_obx_row(row)
 
         if result:
             fetus_id, measurement_name, field_type, value = result
@@ -199,17 +225,11 @@ def _group_measurements_by_fetus(obx_segments: List[str]) -> Dict[str, Dict[str,
     return measurements
 
 
-def _process_obx_segment(segment: str) -> Optional[Tuple[str, str, str, any]]:
-    """Process single OBX segment and extract measurement info."""
-    fields = segment.split("|")
-
-    if len(fields) < 6:
-        logger.debug(f"Segment has insufficient fields: {len(fields)}")
-        return None
-
-    code = fields[3]
-    fetus_id = fields[4] if len(fields) > 4 and fields[4] else "Fetus1"
-    value_field = fields[5] if len(fields) > 5 else ""
+def _process_obx_row(row: Hl7Row) -> Optional[Tuple[int, str, str, any]]:
+    """Process single OBX row and extract measurement info."""
+    code = row.observation_id
+    fetus_id = _fetus_key(row)
+    value_field = row.value
 
     logger.debug(f"  Code: {code}")
     logger.debug(f"  Fetus ID: {fetus_id}")
@@ -223,7 +243,7 @@ def _process_obx_segment(segment: str) -> Optional[Tuple[str, str, str, any]]:
     measurement_name, field_type = measurement_info
     logger.debug(f"  Recognized: {measurement_name} ({field_type})")
 
-    value = _extract_field_value(field_type, value_field, fields)
+    value = _extract_field_value(field_type, value_field, row.units)
     if value is None:
         logger.debug(f"  Could not extract value from: {value_field}")
         return None
@@ -275,15 +295,14 @@ def _parse_measurement_code(code: str) -> Optional[Tuple[str, str]]:
 
 
 def _extract_field_value(
-    field_type: str, value_field: str, fields: List[str]
+    field_type: str, value_field: str, units_field: str
 ) -> Optional[any]:
     """Extract value based on field type."""
     if field_type == "value":
         value = _parse_value(value_field)
-        # Store unit if available
-        if value is not None and len(fields) > 6:
-            return {"value": value, "unit": _parse_unit_field(fields[6])}
-        return value if value is not None else None
+        if value is not None:
+            return {"value": value, "unit": _parse_unit_field(units_field)}
+        return None
 
     elif field_type == "percentile":
         return _parse_percentile_field(value_field)
@@ -299,7 +318,7 @@ def _extract_field_value(
 
 def _store_measurement_field(
     measurements: Dict,
-    fetus_id: str,
+    fetus_id: int,
     measurement_name: str,
     field_type: str,
     value: any,
