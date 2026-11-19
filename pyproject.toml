@@ -55,7 +55,8 @@ dev = [
  "pre-commit>=3.7",
 ]
 ocr = [
- "docling==2.138.0", # pulls in torch/CUDA (~3GB)
+ "docling==2.142.1; python_full_version >= '3.11'", # pulls in torch/CUDA (~3GB)
+ "docling==2.138.0; python_full_version < '3.11'", # pillow 13 needs Python 3.11 or newer
 ]
 fast_hpo_cr = [
  "FastHPOCR==0.1.4",
@@ -102,4 +103,8 @@ version = { attr = "prenatalppkt._version.version" }
 exclude-newer = "2026-10-14T00:00:00Z"
 # Security fixes newer than the cutoff, allowed on purpose (2026-10-28):
 # certifi (emSign CA removal), virtualenv / filelock / setuptools (dev-tool advisories).
-exclude-newer-package = { certifi = "2026-10-21T00:00:00Z", virtualenv = "2026-10-21T00:00:00Z", filelock = "2026-10-21T00:00:00Z", setuptools = "2026-10-21T00:00:00Z" }
+# OCR extra: pillow 13.0.0 (image-parsing advisories) needs docling 2.142.1 and the docling
+# packages that first allow pillow 13 (docling-core 2.104.0, docling-ibm-models 4.0.4,
+# docling-parse 7.23.0, doclang 0.8.0). soupsieve 4.0 fixes an HTML parser advisory.
+# Each one is newer than the cutoff above, within the two-week rule.
+exclude-newer-package = { certifi = "2026-10-21T00:00:00Z", virtualenv = "2026-10-21T00:00:00Z", filelock = "2026-10-21T00:00:00Z", setuptools = "2026-10-21T00:00:00Z", pillow = "2026-10-17T00:00:00Z", docling = "2026-10-24T00:00:00Z", docling-slim = "2026-10-24T00:00:00Z", docling-core = "2026-10-24T00:00:00Z", docling-ibm-models = "2026-10-24T00:00:00Z", docling-parse = "2026-10-24T00:00:00Z", doclang = "2026-10-16T00:00:00Z", soupsieve = "2026-11-04T00:00:00Z" }
