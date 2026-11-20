@@ -38,6 +38,7 @@ If you want exact functions, classes, enums, and config files, use the
 setup
 data/index
 measurements
+prenatal-skeletal-terms
 internal
 ```
 
