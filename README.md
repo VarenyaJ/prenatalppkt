@@ -68,7 +68,7 @@ interpretation workflows.
 ### Quickstart with uv
 
 ```bash
-git clone https://github.com/P2GX/prenatalppkt.git
+git clone https://github.com/VarenyaJ/prenatalppkt.git
 cd prenatalppkt
 uv sync --extra dev
 uv run python -c "import prenatalppkt; print(prenatalppkt.__version__)"
@@ -87,7 +87,7 @@ For users who cannot or prefer not to install uv:
 ```bash
 # Clone and enter the repo
 
-git clone https://github.com/P2GX/prenatalppkt.git
+git clone https://github.com/VarenyaJ/prenatalppkt.git
 cd prenatalppkt
 
 python3 -m venv .venv
@@ -282,12 +282,12 @@ reference standard.
   author = {Jain, Varenya and Robinson, Peter N.},
   title = {prenatalppkt: Standardized Prenatal Phenotype Representation},
   year = {2025},
-  url = {https://github.com/P2GX/prenatalppkt}
+  url = {https://github.com/VarenyaJ/prenatalppkt}
 }
 ```
 
 ## Support
 
 - Documentation: [`docs/`](docs/)
-- Issues: <https://github.com/P2GX/prenatalppkt/issues>
-- Discussions: <https://github.com/P2GX/prenatalppkt/discussions>
+- Issues: <https://github.com/VarenyaJ/prenatalppkt/issues>
+- Discussions: <https://github.com/VarenyaJ/prenatalppkt/discussions>

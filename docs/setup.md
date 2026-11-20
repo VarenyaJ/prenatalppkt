@@ -14,7 +14,7 @@ The package targets Python 3.10 or later.
 ## Clone the repository
 
 ```bash
-git clone https://github.com/P2GX/prenatalppkt.git
+git clone https://github.com/VarenyaJ/prenatalppkt.git
 cd prenatalppkt
 ```
 
