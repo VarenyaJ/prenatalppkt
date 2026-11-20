@@ -2,6 +2,20 @@
 #
 # HPO term mappings for fetal biometric measurements.
 # Each measurement type has a list of percentile ranges and maps to appropriate HPO terms.
+#
+# Known limitation of the normal bins (normal: true). A normal bin is written
+# as an excluded phenotypic feature, and an excluded HPO term also excludes all
+# of its descendants. A normal-bin term should therefore describe only the size
+# that the measurement checks. Several normal-bin terms below describe a whole
+# structure or system instead, for example HP:0002823 "Abnormal femur
+# morphology" for femur length or HP:0034207 "Abnormal fetal gastrointestinal
+# system morphology" for abdominal circumference. A normal value then also rules
+# out findings it says nothing about, such as femoral bowing or an echogenic
+# bowel. These bins need a size-specific term (for example HP:6001418 "Abnormal
+# fetal femur length") or no excluded term, after clinical review. Head
+# circumference, biparietal diameter and occipitofrontal diameter also share one
+# normal-bin term, so only one of them survives deduplication. See
+# docs/known-limitations.md.
 
 # "(0,3)": lower_extreme_term,
 # "(3,5)": lower_term,

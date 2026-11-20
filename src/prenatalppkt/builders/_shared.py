@@ -47,6 +47,12 @@ def resolve_subject_ga(dating: dict, term_bins: list[TermBin]) -> GestationalAge
 
 
 def biometry_feature(tb: TermBin) -> pps2.PhenotypicFeature:
+    # Known limitation: the onset comes from the age written in the term-bin
+    # description, which is the age that this one measurement implies, not the
+    # gestational age of the exam. Findings from one exam can therefore get
+    # different onsets, and a description without an age falls back to the
+    # default. The onset should be the exam's gestational age. See
+    # docs/known-limitations.md.
     parsed = parse_ga_from_description(tb.description)
     if parsed is not None:
         w, d = parsed
@@ -78,6 +84,11 @@ def narrative_feature(
 def dedup_by_hpo_id(
     features: list[pps2.PhenotypicFeature],
 ) -> list[pps2.PhenotypicFeature]:
+    # Known limitation: this keeps the first feature for each HPO ID and drops
+    # the rest. When two measurements map to the same term (for example normal
+    # head circumference and normal biparietal diameter), the second
+    # measurement and its description are lost from the output. See
+    # docs/known-limitations.md.
     seen: set[str] = set()
     out: list[pps2.PhenotypicFeature] = []
     for pf in features:
