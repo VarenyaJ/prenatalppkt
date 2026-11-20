@@ -75,10 +75,10 @@ docs = [
 ]
 
 [project.urls]
-homepage = "https://github.com/P2GX/prenatalppkt/"
-repository = "https://github.com/P2GX/prenatalppkt/.git"
-documentation = "https://github.com/P2GX/prenatalppkt/"
-bugtracker = "https://github.com/P2GX/prenatalppkt/issues"
+homepage = "https://github.com/VarenyaJ/prenatalppkt/"
+repository = "https://github.com/VarenyaJ/prenatalppkt/.git"
+documentation = "https://github.com/VarenyaJ/prenatalppkt/"
+bugtracker = "https://github.com/VarenyaJ/prenatalppkt/issues"
 
 [project.scripts]
 prenatalppkt = "prenatalppkt.cli:main"
