@@ -42,6 +42,10 @@ At a high level, the package helps with:
 Detailed setup, data, architecture, and API notes live in the documentation under
 [`docs/`](docs/).
 
+![From a prenatal ultrasound finding to HPO terms in a fetal Phenopacket](docs/figures/ultrasound-to-phenopacket.png)
+
+The figure shows the idea with prenatal skeletal findings: each ultrasound finding becomes a coded HPO term in one Phenopacket per fetus, next to its measurements, variant interpretation and diagnosis. More figures are in [`docs/prenatal-skeletal-terms.md`](docs/prenatal-skeletal-terms.md).
+
 ## Motivation
 
 Prenatal ultrasound data is clinically useful, but it is often stored in formats
