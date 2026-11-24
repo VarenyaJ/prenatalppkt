@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
-from datetime import datetime
+from datetime import date, datetime
 from typing import Dict, Optional, Union
 
 from prenatalppkt.gestational_age import GestationalAge
 
+logger = logging.getLogger(__name__)
 
 DATE_FORMATS = ["%Y-%m-%d", "%m/%d/%Y", "%Y%m%d"]
 
@@ -54,7 +56,8 @@ def _parse_observer_pregnancy(json_data: Dict) -> Dict:
     edd = exam.get("edd") or exam.get("estimated_due_date")
     dating_method = exam.get("dating_method")
 
-    ga_by_lmp = _calculate_ga_from_lmp(lmp) if lmp else None
+    exam_date = _parse_date_string(exam.get("exm_date") or "")
+    ga_by_lmp = _calculate_ga_from_lmp(lmp, exam_date) if lmp else None
 
     return {
         "lmp": lmp,
@@ -102,7 +105,9 @@ def _parse_viewpoint_text_pregnancy(text: str) -> Dict:
         elif "ASSIGNED" in line.upper():
             dating_method = line
 
-    ga_by_lmp = _calculate_ga_from_lmp(lmp) if lmp else None
+    # The Dating section carries no exam date, so there is nothing to count
+    # the days from and the age by LMP stays unknown.
+    ga_by_lmp = None
 
     return {
         "lmp": lmp,
@@ -133,8 +138,16 @@ def _extract_dating_section(text: str) -> str:
 def _parse_viewpoint_hl7_pregnancy(hl7: str) -> Dict:
     lmp = None
     edd = None
+    exam_date = None
 
     for line in hl7.splitlines():
+        if line.startswith("OBR"):
+            # OBR-7 is the observation date/time; the first 8 characters are YYYYMMDD.
+            obr_fields = line.split("|")
+            if len(obr_fields) > 7:
+                exam_date = _parse_date_string(obr_fields[7][:8])
+            continue
+
         if not line.startswith("OBX"):
             continue
 
@@ -151,7 +164,7 @@ def _parse_viewpoint_hl7_pregnancy(hl7: str) -> Dict:
         elif "EDD" in obs_id:
             edd = _parse_date_string(value)
 
-    ga_by_lmp = _calculate_ga_from_lmp(lmp) if lmp else None
+    ga_by_lmp = _calculate_ga_from_lmp(lmp, exam_date) if lmp else None
 
     return {
         "lmp": lmp,
@@ -200,9 +213,22 @@ def _try_parse_date(value: str, fmt: str) -> Optional[str]:
         return None
 
 
-def _calculate_ga_from_lmp(lmp_iso: str) -> Optional[Dict]:
-    try:
-        ga = GestationalAge.from_lmp(lmp_iso)
-        return {"weeks": ga.weeks, "days": ga.days}
-    except Exception:
+def _calculate_ga_from_lmp(
+    lmp_iso: str, exam_date_iso: Optional[str]
+) -> Optional[Dict]:
+    """
+    Gestational age by LMP on the exam date, or None when it cannot be known.
+
+    None covers a missing exam date, an exam before the LMP, and an LMP so far
+    back that the age is impossible (a placeholder such as 0001-01-01).
+    """
+    if not exam_date_iso:
         return None
+    try:
+        ga = GestationalAge.from_lmp(
+            date.fromisoformat(lmp_iso), date.fromisoformat(exam_date_iso)
+        )
+    except ValueError as e:
+        logger.debug(f"No gestational age by LMP for LMP {lmp_iso}: {e}")
+        return None
+    return {"weeks": ga.weeks, "days": ga.days}
