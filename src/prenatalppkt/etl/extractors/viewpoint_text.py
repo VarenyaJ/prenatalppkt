@@ -247,13 +247,15 @@ def _parse_gestational_age(
     if not ga_weeks_str or "w" not in ga_weeks_str:
         return None
 
-    weeks_int = int(ga_weeks_str.replace("w", "").strip())
-    days_int = 0
-
+    text = ga_weeks_str
     if ga_days_str and "d" in ga_days_str:
-        days_int = int(ga_days_str.replace("d", "").strip())
+        text = f"{ga_weeks_str} {ga_days_str}"
 
-    return GestationalAge(weeks=weeks_int, days=days_int)
+    try:
+        return GestationalAge.parse(text)
+    except ValueError as e:
+        logger.warning(f"Ignoring unreadable gestational age '{text}': {e}")
+        return None
 
 
 def _parse_percentile(percentile_str: str) -> float:

@@ -691,3 +691,49 @@ class TestViewPointHL7FileEncoding:
         path = self._write(tmp_path, "SYNTHETIC/99", "latin-1")
         with pytest.raises(Hl7EncodingError, match="SYNTHETIC/99"):
             viewpoint_hl7.extract_all_fetuses_from_file(path)
+
+
+class TestViewPointHL7SharedGaParser:
+    @pytest.mark.parametrize(
+        "field, expected",
+        [("87^12w 3d", (12, 3)), ("85^12w3d", (12, 3)), ("85^12w", (12, 0))],
+    )
+    def test_parses_ga_field(self, field, expected):
+        ga = viewpoint_hl7._parse_ga_field(field)
+
+        assert (ga.weeks, ga.days) == expected
+
+    @pytest.mark.parametrize(
+        "field", ["", "87", "87^garbled", "87^12w 9d", "87^999w 0d"]
+    )
+    def test_bad_ga_field_is_none(self, field):
+        assert viewpoint_hl7._parse_ga_field(field) is None
+
+    def test_impossible_ga_field_warns(self, caplog):
+        viewpoint_hl7._parse_ga_field("87^12w 9d")
+
+        assert "gestational age" in caplog.text.lower()
+
+    def test_impossible_ga_keeps_the_measurement(self):
+        data = """
+        MSH|^~\\&|ViewPoint|Hospital|||20211223144928||ORU^R01|123456|P|2.4
+        OBX|1|ST|Fetus.Identifier^Fetus Identifier|Fetus1|A
+        OBX|2|NM|SkullFetus.HeadCircumference^HC|Fetus1|175^175.0|mm
+        OBX|3|NM|SkullFetus.VP_HeadCircumference_Percentile|Fetus1|50^50%|%
+        OBX|4|NM|SkullFetus.VP_HeadCircumference_GA|Fetus1|177^25w 9d|d
+        OBX|5|NM|SkullFetus.BiParietalDiameter^BPD|Fetus1|68^68.0|mm
+        OBX|6|NM|SkullFetus.VP_BiParietalDiameter_Percentile|Fetus1|55^55%|%
+        OBX|7|NM|SkullFetus.VP_BiParietalDiameter_GA|Fetus1|182^26w 0d|d
+        OBX|8|NM|AbdomenFetus.AbdominalCircumference^AC|Fetus1|212^212.0|mm
+        OBX|9|NM|AbdomenFetus.VP_AbdominalCircumference_Percentile|Fetus1|48^48%|%
+        OBX|10|NM|AbdomenFetus.VP_AbdominalCircumference_GA|Fetus1|179^25w 5d|d
+        OBX|11|NM|ExtremitiesFetus.FemurLength^FL|Fetus1|48^48.0|mm
+        OBX|12|NM|ExtremitiesFetus.VP_FemurLength_Percentile|Fetus1|52^52%|%
+        OBX|13|NM|ExtremitiesFetus.VP_FemurLength_GA|Fetus1|183^26w 1d|d
+        """
+        term_bins = viewpoint_hl7.extract(data)
+
+        hc = next(tb for tb in term_bins if "HC" in tb.description)
+        bpd = next(tb for tb in term_bins if "BPD" in tb.description)
+        assert hc.gestational_age_weeks is None
+        assert bpd.gestational_age_weeks == pytest.approx(26)

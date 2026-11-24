@@ -593,3 +593,41 @@ class TestObserverCorpus:
         assert len(bins) == n_bins
         got = {b.description.split(":")[0].strip() for b in bins if not b.normal}
         assert got == abnormal
+
+
+class TestObserverGestationalAge:
+    def _fetus(self, ega):
+        return {
+            "fetus": {"fetus_number": 1},
+            "measurements": [
+                {
+                    "label": "HC",
+                    "value": 17.5,
+                    "unit_of_measure": "cm",
+                    "calculated_percentile": 50.0,
+                    "calculated_ega": ega,
+                }
+            ],
+        }
+
+    def test_impossible_ega_keeps_the_measurement_without_a_ga(self, caplog):
+        term_bins = observer.extract({"fetuses": [self._fetus(500.0)]})
+
+        assert len(term_bins) == 1
+        assert term_bins[0].gestational_age_weeks is None
+        assert "gestational age" in caplog.text.lower()
+
+    def test_valid_ega_is_kept_as_fractional_weeks(self):
+        term_bins = observer.extract({"fetuses": [self._fetus(21.5)]})
+
+        assert term_bins[0].gestational_age_weeks == pytest.approx(21 + 3 / 7)
+
+    def test_apple_sally_ages_come_from_calculated_ega(self):
+        bins = observer.extract_from_file(DATA_DIR / "Apple_Sally_pretty.json")
+
+        by_name = {b.description.split(":")[0].strip(): b for b in bins}
+        # Observer's calculated_ega is decimal weeks; the TermBin keeps it as
+        # completed weeks plus whole days (26.9 -> 26w 6d).
+        assert by_name["AC"].gestational_age_weeks == pytest.approx(26 + 6 / 7)
+        assert by_name["Femur"].gestational_age_weeks == pytest.approx(27)
+        assert all(b.gestational_age_weeks is not None for b in bins)
