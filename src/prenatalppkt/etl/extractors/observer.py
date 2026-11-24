@@ -410,10 +410,16 @@ def _parse_ega(ega: Any, label: str) -> GestationalAge | None:
     """
     Read Observer's ``calculated_ega`` (decimal weeks) into a GestationalAge.
 
+    Observer writes ``calculated_ega: 0`` when it did not calculate an age for
+    a measurement, the same way it writes ``calculated_percentile: 0`` for a
+    percentile it never calculated. 0 therefore means "unknown", not 0w 0d.
     A value that cannot be read, or is outside the plausible range, is logged
     and the measurement keeps no gestational age.
     """
     if ega is None:
+        return None
+    if ega == 0:
+        logger.debug(f"{label}: Observer did not calculate a gestational age")
         return None
     try:
         return GestationalAge.parse(ega)

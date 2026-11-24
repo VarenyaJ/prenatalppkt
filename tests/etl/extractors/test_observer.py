@@ -622,6 +622,21 @@ class TestObserverGestationalAge:
 
         assert term_bins[0].gestational_age_weeks == pytest.approx(21 + 3 / 7)
 
+    def test_zero_ega_gives_no_gestational_age(self):
+        # Observer writes calculated_ega 0 when it did not calculate an age.
+        term_bins = observer.extract({"fetuses": [self._fetus(0)]})
+
+        assert len(term_bins) == 1
+        assert term_bins[0].gestational_age_weeks is None
+
+    def test_t1_zero_ega_gives_no_gestational_age(self):
+        crl = dict(_CRL_OK, calculated_ega=0)
+
+        term_bins = observer.extract(_t1_fixture(crl))
+
+        assert len(term_bins) == 1
+        assert term_bins[0].gestational_age_weeks is None
+
     def test_apple_sally_ages_come_from_calculated_ega(self):
         bins = observer.extract_from_file(DATA_DIR / "Apple_Sally_pretty.json")
 
