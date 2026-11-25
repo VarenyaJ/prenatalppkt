@@ -1,3 +1,7 @@
+<p align="center">
+  <img alt="prenatalppkt logo" src="docs/assets/prenatalppkt-logo.png" width="180">
+</p>
+
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](docs/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0%20%7C%20Commercial-blue.svg)](LICENSE)
 [![GA4GH](https://img.shields.io/badge/GA4GH-Phenopackets-orange.svg)](https://github.com/phenopackets)
