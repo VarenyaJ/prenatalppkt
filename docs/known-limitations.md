@@ -26,5 +26,4 @@ Values, units and centiles exist only in the feature description text. Writing e
 
 ## Other
 
-- The `prenatalppkt` console command is declared but has no module yet: [#44](https://github.com/VarenyaJ/prenatalppkt/issues/44).
 - Out-of-date links and counts in the docs, and no tagged release yet: [#45](https://github.com/VarenyaJ/prenatalppkt/issues/45).

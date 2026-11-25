@@ -80,9 +80,6 @@ repository = "https://github.com/VarenyaJ/prenatalppkt/.git"
 documentation = "https://github.com/VarenyaJ/prenatalppkt/"
 bugtracker = "https://github.com/VarenyaJ/prenatalppkt/issues"
 
-[project.scripts]
-prenatalppkt = "prenatalppkt.cli:main"
-
 
 [tool.setuptools]
 packages.find = { where = ["src"] }

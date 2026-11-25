@@ -158,8 +158,6 @@ The notebook does four main things:
 `prenatalppkt` is mainly a library right now. The most reliable terminal path
 is to run a short Python script.
 
-The installed console entry point is not the main supported interface yet.
-
 ### Build a Phenopacket from an Observer fixture
 
 With plain `venv`:
