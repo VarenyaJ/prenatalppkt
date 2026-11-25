@@ -421,15 +421,11 @@ def _parse_ga_field(value_field: str) -> Optional[GestationalAge]:
 
     ga_str = parts[1]  # e.g., "12w 3d"
 
-    # Parse weeks and days
-    match = re.match(r"(\d+)w\s*(\d*)d?", ga_str)
-    if not match:
+    try:
+        return GestationalAge.parse(ga_str)
+    except ValueError as e:
+        logger.warning(f"Ignoring unreadable gestational age in '{value_field}': {e}")
         return None
-
-    weeks = int(match.group(1))
-    days = int(match.group(2)) if match.group(2) else 0
-
-    return GestationalAge(weeks=weeks, days=days)
 
 
 def _create_term_bins(

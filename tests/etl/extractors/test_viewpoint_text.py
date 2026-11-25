@@ -324,3 +324,36 @@ Femur   48.0    mm      26w 1d      52%     Hadlock
         # TODO(@VarenyaJ): ensure this works in the main file and then fix this part of the test
         # term_bins = viewpoint_text.extract(data)
         # assert len(term_bins) == 3
+
+
+class TestViewPointTextSharedGaParser:
+    def test_parses_weeks_and_days_columns(self):
+        ga = viewpoint_text._parse_gestational_age("25w", "3d")
+
+        assert (ga.weeks, ga.days) == (25, 3)
+
+    def test_missing_gestational_age_is_none(self):
+        assert viewpoint_text._parse_gestational_age(None, None) is None
+
+    @pytest.mark.parametrize(
+        "weeks, days", [("25w", "9d"), ("999w", "0d"), ("xw", "0d")]
+    )
+    def test_impossible_gestational_age_is_none_and_warns(self, weeks, days, caplog):
+        assert viewpoint_text._parse_gestational_age(weeks, days) is None
+        assert "gestational age" in caplog.text.lower()
+
+    def test_impossible_gestational_age_keeps_the_measurement(self):
+        data = """
+Fetal Biometry
+==============
+
+HC      175.0   mm      25w 9d      50%     Hadlock
+BPD     68.0    mm      26w 0d      55%     Hadlock
+AC      212.0   mm      25w 5d      48%     Hadlock
+Femur   48.0    mm      26w 1d      52%     Hadlock
+"""
+        term_bins = viewpoint_text.extract(data)
+
+        hc = next(tb for tb in term_bins if "HC" in tb.description)
+        assert len(term_bins) == 4
+        assert hc.gestational_age_weeks is None

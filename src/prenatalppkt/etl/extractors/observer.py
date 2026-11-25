@@ -334,10 +334,7 @@ def _parse_single_measurement(
     # Convert units
     value_mm = _convert_to_mm(float(value), unit)
 
-    # Parse gestational age
-    gestational_age = None
-    if ega is not None:
-        gestational_age = GestationalAge.from_weeks(float(ega))
+    gestational_age = _parse_ega(ega, label)
 
     logger.debug(
         f"Creating TermBin for {canonical_name}: "
@@ -392,10 +389,7 @@ def _parse_t1_measurements(
         unit = m.get("unit_of_measure", "mm")
         value_mm = _convert_to_mm(float(value), unit)
 
-        ega = m.get("calculated_ega")
-        gestational_age = (
-            GestationalAge.from_weeks(float(ega)) if ega is not None else None
-        )
+        gestational_age = _parse_ega(m.get("calculated_ega"), label)
 
         canonical_name = OBSERVER_NAME_MAP[label].value
         term_bin = factory.create_term_bin(
@@ -410,6 +404,28 @@ def _parse_t1_measurements(
             term_bins.append(term_bin)
 
     return term_bins
+
+
+def _parse_ega(ega: Any, label: str) -> GestationalAge | None:
+    """
+    Read Observer's ``calculated_ega`` (decimal weeks) into a GestationalAge.
+
+    Observer writes ``calculated_ega: 0`` when it did not calculate an age for
+    a measurement, the same way it writes ``calculated_percentile: 0`` for a
+    percentile it never calculated. 0 therefore means "unknown", not 0w 0d.
+    A value that cannot be read, or is outside the plausible range, is logged
+    and the measurement keeps no gestational age.
+    """
+    if ega is None:
+        return None
+    if ega == 0:
+        logger.debug(f"{label}: Observer did not calculate a gestational age")
+        return None
+    try:
+        return GestationalAge.parse(ega)
+    except ValueError as e:
+        logger.warning(f"Ignoring unreadable gestational age for {label}: {e}")
+        return None
 
 
 def _convert_to_mm(value: float, unit: str) -> float:

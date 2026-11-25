@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+
 import pytest
 
 from prenatalppkt.etl.sections.pregnancy_dating import parse_pregnancy_dating
@@ -104,3 +106,64 @@ class TestPregnancyDatingEdgeCases:
         result = parse_pregnancy_dating(text, "viewpoint_text")
         assert result["lmp"] is None
         assert result["ga_by_lmp"] is None
+
+
+DATA_DIR = Path(__file__).resolve().parents[3] / "tests" / "data"
+
+
+class TestGaByLmpUsesTheExamDate:
+    def test_observer_ga_by_lmp_is_calculated_from_lmp_and_exam_date(self):
+        data = json.dumps({"exam": {"lmp": "2025-01-15", "exm_date": "2025-05-02"}})
+
+        result = parse_pregnancy_dating(data, "observer_json")
+
+        assert result["ga_by_lmp"] == {"weeks": 15, "days": 2}
+        assert result["assigned_ga"] == {"weeks": 15, "days": 2}
+
+    def test_observer_placeholder_lmp_gives_no_ga(self):
+        # Observer writes 0001-01-01 when no LMP was entered.
+        data = json.dumps({"exam": {"lmp": "0001-01-01", "exm_date": "2025-07-02"}})
+
+        assert parse_pregnancy_dating(data, "observer_json")["ga_by_lmp"] is None
+
+    def test_apple_sally_has_a_placeholder_lmp_and_no_ga_by_lmp(self):
+        data = (DATA_DIR / "Apple_Sally_pretty.json").read_text()
+
+        result = parse_pregnancy_dating(data, "observer_json")
+
+        assert result["lmp"] == "0001-01-01"
+        assert result["ga_by_lmp"] is None
+
+    def test_observer_exam_date_before_lmp_gives_no_ga(self):
+        data = json.dumps({"exam": {"lmp": "2025-05-02", "exm_date": "2025-01-15"}})
+
+        assert parse_pregnancy_dating(data, "observer_json")["ga_by_lmp"] is None
+
+    def test_observer_lmp_without_exam_date_gives_no_ga(self):
+        data = json.dumps({"exam": {"lmp": "2025-01-15"}})
+
+        assert parse_pregnancy_dating(data, "observer_json")["ga_by_lmp"] is None
+
+    def test_hl7_ga_by_lmp_uses_the_obr_exam_date(self):
+        hl7 = (
+            "OBR|1|V1|1|US^Ultrasound|||20250502140000\n"
+            "OBX||DT|EpisodeHistory.LastMenstrualPeriod^LMP|1|20250115\n"
+        )
+
+        result = parse_pregnancy_dating(hl7, "viewpoint_hl7")
+
+        assert result["ga_by_lmp"] == {"weeks": 15, "days": 2}
+
+    def test_hl7_fixture_ga_by_lmp(self):
+        hl7 = (DATA_DIR / "viewpoint_hl7_test.txt").read_text(encoding="latin-1")
+
+        result = parse_pregnancy_dating(hl7, "viewpoint_hl7")
+
+        # LMP 2025-10-01, OBR-7 exam date 2025-12-30: 90 days = 12w 6d
+        assert result["lmp"] == "2025-10-01"
+        assert result["ga_by_lmp"] == {"weeks": 12, "days": 6}
+
+    def test_hl7_lmp_without_obr_gives_no_ga(self):
+        hl7 = "OBX||DT|EpisodeHistory.LastMenstrualPeriod^LMP|1|20250115\n"
+
+        assert parse_pregnancy_dating(hl7, "viewpoint_hl7")["ga_by_lmp"] is None
